@@ -4,12 +4,12 @@ import os, os.path
 from PIL import Image, ImageOps
 from multiprocessing import Process, Queue, cpu_count
 
-# Change these 3 config parameters to suit your needs...
-TILE_SIZE      = 50		      # height/width of mosaic tiles in pixels
-TILE_MATCH_RES = 5		      # tile matching resolution (higher values give better fit but require more processing)
-ENLARGEMENT    = 8	          # the mosaic image will be this many times wider and taller than the original
-SELECTION_THRESHOLD = 50_000  # consider all images with difference smaller than this to top candidate when selecting tile
-DISABLE_DIFF_BAILOUT = True   # disable pre-termination of image difference computation (makes diff threshold work properly)
+# Change these 5 config parameters to suit your needs...
+TILE_SIZE            = 50      # height/width of mosaic tiles in pixels
+TILE_MATCH_RES       = 5       # tile matching resolution (higher values give better fit but require more processing)
+ENLARGEMENT          = 8       # the mosaic image will be this many times wider and taller than the original
+SELECTION_THRESHOLD  = 50_000  # consider all images with difference smaller than this to top candidate when selecting tile
+DISABLE_DIFF_BAILOUT = True    # disable pre-termination of image difference computation (makes diff threshold work properly)
 
 Image.MAX_IMAGE_PIXELS = sys.maxsize
 
