@@ -1,12 +1,17 @@
 import sys
+import random
 import os, os.path
 from PIL import Image, ImageOps
 from multiprocessing import Process, Queue, cpu_count
 
 # Change these 3 config parameters to suit your needs...
-TILE_SIZE      = 50		# height/width of mosaic tiles in pixels
-TILE_MATCH_RES = 5		# tile matching resolution (higher values give better fit but require more processing)
-ENLARGEMENT    = 8		# the mosaic image will be this many times wider and taller than the original
+TILE_SIZE      = 50		      # height/width of mosaic tiles in pixels
+TILE_MATCH_RES = 5		      # tile matching resolution (higher values give better fit but require more processing)
+ENLARGEMENT    = 8	          # the mosaic image will be this many times wider and taller than the original
+SELECTION_THRESHOLD = 50_000  # consider all images with difference smaller than this to top candidate when selecting tile
+DISABLE_DIFF_BAILOUT = True   # disable pre-termination of image difference computation (makes diff threshold work properly)
+
+Image.MAX_IMAGE_PIXELS = sys.maxsize
 
 TILE_BLOCK_SIZE = TILE_SIZE / max(min(TILE_MATCH_RES, TILE_SIZE), 1)
 WORKER_COUNT = max(cpu_count() - 1, 1)
@@ -92,7 +97,7 @@ class TileFitter:
 		for i in range(len(t1)):
 			#diff += (abs(t1[i][0] - t2[i][0]) + abs(t1[i][1] - t2[i][1]) + abs(t1[i][2] - t2[i][2]))
 			diff += ((t1[i][0] - t2[i][0])**2 + (t1[i][1] - t2[i][1])**2 + (t1[i][2] - t2[i][2])**2)
-			if diff > bail_out_value:
+			if not DISABLE_DIFF_BAILOUT and diff > bail_out_value:
 				# we know already that this isn't going to be the best fit, so no point continuing with this tile
 				return diff
 		return diff
@@ -103,14 +108,22 @@ class TileFitter:
 		tile_index = 0
 
 		# go through each tile in turn looking for the best match for the part of the image represented by 'img_data'
+		scores = []
 		for tile_data in self.tiles_data:
 			diff = self.__get_tile_diff(img_data, tile_data, min_diff)
+			scores.append((tile_index, diff))
 			if diff < min_diff:
 				min_diff = diff
 				best_fit_tile_index = tile_index
 			tile_index += 1
 
-		return best_fit_tile_index
+		assert min(scores, key=lambda x: x[1])[0] == best_fit_tile_index
+		scores = sorted(scores, key=lambda x: x[1])
+
+		best_match = scores[0]
+		candidates = [idx for idx, val in scores if abs(best_match[1] - val) < SELECTION_THRESHOLD]
+
+		return random.choice(candidates)
 
 def fit_tiles(work_queue, result_queue, tiles_data):
 	# this function gets run by the worker processes, one on each CPU core
